@@ -27,5 +27,15 @@ public class ToastManager {
 
     }
 
+    public void showToast(String msg) {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                toast = Toast.makeText(GlobalApplcation.getContext(), msg, Toast.LENGTH_SHORT);
+                toast.show();
+            }
+        }, 0);
 
+    }
 }
