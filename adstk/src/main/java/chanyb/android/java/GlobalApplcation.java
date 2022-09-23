@@ -36,7 +36,6 @@ public class GlobalApplcation extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.i("this", "GlobalApplication - onCreate");
         registerActivityLifecycleCallbacks(activityLifecycleCallbacks);
         instance = this;
         state = State.None;
