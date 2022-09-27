@@ -25,9 +25,8 @@ public class FutureTaskRunner {
                 futureTask.run();
                 try {
                     if(futureTask.get()) {
-                        Log.i("this", "futureTaskManager - nextTask");
                     } else {
-                        Log.i("this", "futureTaskManager - fail");
+                        throw new RuntimeException("futureTaskManager - get Fail..");
                     }
                 } catch (ExecutionException e) {
                     e.printStackTrace();
