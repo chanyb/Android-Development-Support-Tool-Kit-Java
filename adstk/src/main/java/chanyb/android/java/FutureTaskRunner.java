@@ -1,4 +1,4 @@
-package com.example.smartbox_dup.utils;
+package chanyb.android.java;
 
 import android.util.Log;
 
