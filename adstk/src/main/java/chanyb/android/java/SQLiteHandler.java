@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class SQLiteHandler {
@@ -143,13 +144,6 @@ public class SQLiteHandler {
         return mDB.insert(tableName, null, contentValues); // 성공 시 0보다 큰 정수, 실패 시 -1 반환
     }
 
-    public void delete(String tableName, String whereClause, String[] whereArgs)
-    {
-        Log.d(TAG, "delete");
-        mDB = mHelper.getWritableDatabase();
-        mDB.delete(tableName, whereClause, whereArgs);
-    }
-
     // 직접 작성하여 update하는 함수
     public void update(String tableName, ContentValues contentValue, String whereCluase, String[] whereArgs) {
         mDB = mHelper.getWritableDatabase();
@@ -160,51 +154,90 @@ public class SQLiteHandler {
     public long update(String tableName, Serializable serializable) {
         mDB = mHelper.getWritableDatabase();
         ContentValues contentValue = getContentValuesFromSerializable(tableName, serializable);
+        Map<String, String[]> whereClauseAndArgs = getWhereClauseFromTable(tableName, serializable);
+        String whereClause = whereClauseAndArgs.keySet().iterator().next();
+        String[] whereArgs = whereClauseAndArgs.get(whereClause);
+
+        return mDB.update(tableName, contentValue, whereClause, whereArgs); // success: bigger than 0, fail: 0
+    }
+
+    // 직접 작성하여 delete 하는 함수
+    public long delete(String tableName, String whereClause, String[] whereArgs)
+    {
+        Log.d(TAG, "delete");
+        mDB = mHelper.getWritableDatabase();
+
+        return mDB.delete(tableName, whereClause, whereArgs); // success: bigger than 0, fail: 0
+    }
+
+    // 객체로 delete 하는 함수
+    public long delete(String tableName, Serializable serializable) {
+        mDB = mHelper.getWritableDatabase();
+        Map<String, String[]> whereClauseAndArgs = getWhereClauseFromTable(tableName, serializable);
+        String whereClause = whereClauseAndArgs.keySet().iterator().next();
+        String[] whereArgs = whereClauseAndArgs.get(whereClause);
+
+        return mDB.delete(tableName, whereClause, whereArgs); // success: bigger than 0, fail: 0
+    }
+
+    // 해당 테이블의 whereCluase, whereArgs를 생성한다. (prinary key를 통해 구별하는)
+    public Map<String, String[]> getWhereClauseFromTable(String tableName, Serializable serializable) {
+        ContentValues contentValue = getContentValuesFromSerializable(tableName, serializable);
+        Map<String, String> column = getColumns(tableName);
+        StringBuilder whereClause = new StringBuilder();
+        ArrayList<String> primaryKeys = getPrimaryKeysFromColumn(column);
+        String[] whereArgs = new String[primaryKeys.size()];
+        for (int idx=0; idx<primaryKeys.size(); idx++) {
+            // 각각의 primary key에 대해
+            whereClause.append(primaryKeys.get(idx));
+            whereClause.append("=?");
+            whereClause.append(" and ");
+            whereArgs[idx] = (String) contentValue.get(primaryKeys.get(idx));
+        }
+        whereClause.setLength(whereClause.length()-5); // remove last ' and '
+        Map<String, String[]> res = new LinkedHashMap<>();
+        res.put(whereClause.toString(), whereArgs);
+        return res;
+    }
+
+    public ArrayList<String> getPrimaryKeysFromColumn(Map<String, String> column) {
         ArrayList<String> primaryKeyList = new ArrayList<>();
-
-        for (int idx=0; idx<tables.size(); idx++) {
-            // tableName에 해당하는 idx찾기
-            if (!tables.get(idx).equals(tableName)) continue;
-
-            // 해당하는 columns 가져와서
-            Map<String, String> column = columns.get(idx);
-            for (String key : column.keySet()) {
-                String columnInfo = column.get(key);
-                if (columnInfo.toLowerCase().contains("primary key")) {
-                    // primary key(colName, colName, ...) 인 경우
-                    if(columnInfo.toLowerCase().contains("primary key(")) {
-                        String tmp = columnInfo.toLowerCase();
-                        tmp = tmp.replace("primary key(", "");
-                        tmp = tmp.replace(")", "");
-                        tmp = tmp.replace(", ", ",");
-                        tmp = tmp.replace(" ,", ",");
-                        String[] tmpArr = tmp.split(",");
-                        for(String keyName : tmpArr) {
-                            primaryKeyList.add(keyName.trim());
-                        }
-                        break;
-                    } else {
-                        // primary key라면,
-                        primaryKeyList.add(key);
+        if(column.size() == 0) throw new RuntimeException("the parameter column size is 0");
+        for (String key : column.keySet()) {
+            String columnInfo = column.get(key);
+            if (columnInfo.toLowerCase().contains("primary key")) {
+                // primary key(colName, colName, ...) 인 경우
+                if(columnInfo.toLowerCase().contains("primary key(")) {
+                    String tmp = columnInfo.toLowerCase();
+                    tmp = tmp.replace("primary key(", "");
+                    tmp = tmp.replace(")", "");
+                    tmp = tmp.replace(", ", ",");
+                    tmp = tmp.replace(" ,", ",");
+                    String[] tmpArr = tmp.split(",");
+                    for(String keyName : tmpArr) {
+                        primaryKeyList.add(keyName.trim());
                     }
+                    break;
+                } else {
+                    // primary key라면,
+                    primaryKeyList.add(key);
                 }
             }
         }
-
         if(primaryKeyList.size() == 0) throw new RuntimeException("it must have at least one primary key but expected " + primaryKeyList.size() + ".");
 
-        StringBuilder whereClause = new StringBuilder();
-        String[] whereArgs = new String[primaryKeyList.size()];
-        for (int idx=0; idx<primaryKeyList.size(); idx++) {
-            // 각각의 primary key에 대해
-            whereClause.append(primaryKeyList.get(idx));
-            whereClause.append("=?");
-            whereClause.append(" and ");
-            whereArgs[idx] = (String) contentValue.get(primaryKeyList.get(idx));
+        return primaryKeyList;
+    }
+
+    public Map<String,String> getColumns(String tableName) {
+        for (int idx=0; idx<tables.size(); idx++) {
+            if(!tables.get(idx).equals(tableName)) continue;
+
+            // 해당하는 columns 가져와서
+            return columns.get(idx);
         }
 
-        whereClause.setLength(whereClause.length()-5); // remove last ' and '
-        return mDB.update(tableName, contentValue, whereClause.toString(), whereArgs);
+        throw new RuntimeException("The table name is incorrect.");
     }
 
     public ContentValues getContentValuesFromSerializable(String tableName, Serializable serializable) {
@@ -270,7 +303,6 @@ public class SQLiteHandler {
 
         return contentValue;
     }
-
 
     public void close() {
         mHelper.close();
