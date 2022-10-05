@@ -76,7 +76,7 @@ public class SQLiteHandler {
             Map<String, String> column = columns.get(idx);
             for (String key : column.keySet()) {
                 sqlBuilder.append(key); // key
-                sqlBuilder.append(" ");
+                if(key != null && !key.equals("")) sqlBuilder.append(" ");
                 sqlBuilder.append(column.get(key)); // key info (ex. INTEGER PRIMARY KEY AUTOINCREMENT)
                 sqlBuilder.append(",");
             }
@@ -84,6 +84,7 @@ public class SQLiteHandler {
             sqlBuilder.append(");");
 
             sqls.add(sqlBuilder.toString());
+            Log.i("this", "create table sql: " + sqlBuilder.toString());
         }
         return sqls;
     }
@@ -129,13 +130,85 @@ public class SQLiteHandler {
         return c;
     }
 
-
-    public void insert(String tableName, Serializable serializable) {
-        Log.i(TAG, "insert");
+    // 객체로 insert하는 함수
+    public long insert(String tableName, Serializable serializable) {
         mDB = mHelper.getWritableDatabase();
+        ContentValues contentValue = getContentValuesFromSerializable(tableName, serializable);
+        return mDB.insert(tableName, null, contentValue); // 성공 시 0보다 큰 정수, 실패 시 -1 반환
+    }
 
+    // ContentValue로 insert하는 함수
+    public long insert(String tableName, ContentValues contentValues) {
+        mDB = mHelper.getWritableDatabase();
+        return mDB.insert(tableName, null, contentValues); // 성공 시 0보다 큰 정수, 실패 시 -1 반환
+    }
+
+    public void delete(String tableName, String whereClause, String[] whereArgs)
+    {
+        Log.d(TAG, "delete");
+        mDB = mHelper.getWritableDatabase();
+        mDB.delete(tableName, whereClause, whereArgs);
+    }
+
+    // 직접 작성하여 update하는 함수
+    public void update(String tableName, ContentValues contentValue, String whereCluase, String[] whereArgs) {
+        mDB = mHelper.getWritableDatabase();
+        mDB.update(tableName, contentValue, whereCluase, whereArgs);
+    }
+
+    // 객체로 update하는 함수
+    public long update(String tableName, Serializable serializable) {
+        mDB = mHelper.getWritableDatabase();
+        ContentValues contentValue = getContentValuesFromSerializable(tableName, serializable);
+        ArrayList<String> primaryKeyList = new ArrayList<>();
+
+        for (int idx=0; idx<tables.size(); idx++) {
+            // tableName에 해당하는 idx찾기
+            if (!tables.get(idx).equals(tableName)) continue;
+
+            // 해당하는 columns 가져와서
+            Map<String, String> column = columns.get(idx);
+            for (String key : column.keySet()) {
+                String columnInfo = column.get(key);
+                if (columnInfo.toLowerCase().contains("primary key")) {
+                    // primary key(colName, colName, ...) 인 경우
+                    if(columnInfo.toLowerCase().contains("primary key(")) {
+                        String tmp = columnInfo.toLowerCase();
+                        tmp = tmp.replace("primary key(", "");
+                        tmp = tmp.replace(")", "");
+                        tmp = tmp.replace(", ", ",");
+                        tmp = tmp.replace(" ,", ",");
+                        String[] tmpArr = tmp.split(",");
+                        for(String keyName : tmpArr) {
+                            primaryKeyList.add(keyName.trim());
+                        }
+                        break;
+                    } else {
+                        // primary key라면,
+                        primaryKeyList.add(key);
+                    }
+                }
+            }
+        }
+
+        if(primaryKeyList.size() == 0) throw new RuntimeException("it must have at least one primary key but expected " + primaryKeyList.size() + ".");
+
+        StringBuilder whereClause = new StringBuilder();
+        String[] whereArgs = new String[primaryKeyList.size()];
+        for (int idx=0; idx<primaryKeyList.size(); idx++) {
+            // 각각의 primary key에 대해
+            whereClause.append(primaryKeyList.get(idx));
+            whereClause.append("=?");
+            whereClause.append(" and ");
+            whereArgs[idx] = (String) contentValue.get(primaryKeyList.get(idx));
+        }
+
+        whereClause.setLength(whereClause.length()-5); // remove last ' and '
+        return mDB.update(tableName, contentValue, whereClause.toString(), whereArgs);
+    }
+
+    public ContentValues getContentValuesFromSerializable(String tableName, Serializable serializable) {
         ContentValues contentValue = new ContentValues();
-
         for (Method method : serializable.getClass().getMethods()) {
             if(!method.getDeclaringClass().getName().endsWith("SerializableClass")) continue;
 
@@ -179,19 +252,14 @@ public class SQLiteHandler {
                     // first index is type of column
                     String sType = sColumnInfo.split(" ").length > 1 ? sColumnInfo.split(" ")[0].toLowerCase() : sColumnInfo.toLowerCase();
 
-                    switch (sType) {
-                        case "text":
-                            // put pair of key - value
-                            contentValue.put(field, (String) value);
-                            break;
-                        case "integer":
-                            contentValue.put(field, (int) value);
-                            break;
-                        case "boolean":
-                            contentValue.put(field, (Boolean) value);
-                            break;
-                        default:
-                            throw new RuntimeException("sType error");
+                    if(sType.contains("text") || sType.contains("varchar")) {
+                        contentValue.put(field, (String) value);
+                    } else if (sType.contains("integer")) {
+                        contentValue.put(field, (int) value);
+                    } else if (sType.contains("boolean")) {
+                        contentValue.put(field, (Boolean) value);
+                    } else {
+                        throw new RuntimeException("sType error");
                     }
                     break;
                 }
@@ -200,19 +268,7 @@ public class SQLiteHandler {
             }
         }
 
-        mDB.insert(tableName, null, contentValue);
-    }
-
-    public void delete(String tableName, String whereClause, String[] whereArgs)
-    {
-        Log.d(TAG, "delete");
-        mDB = mHelper.getWritableDatabase();
-        mDB.delete(tableName, whereClause, whereArgs);
-    }
-
-    public void update(String tableName, ContentValues contentValue, String whereCluase, String[] whereArgs) {
-        mDB = mHelper.getWritableDatabase();
-        mDB.update(tableName, contentValue, whereCluase, whereArgs);
+        return contentValue;
     }
 
 
