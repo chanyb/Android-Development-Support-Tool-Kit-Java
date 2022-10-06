@@ -1,5 +1,6 @@
 package chanyb.android.java;
 
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -24,6 +25,11 @@ public class RequestManager {
         if(instance == null) instance = new RequestManager();
         return instance;
     }
+
+    public static int GET = Request.Method.GET;
+    public static int POST = Request.Method.POST;
+    public static int PUT = Request.Method.PUT;
+    public static int DELETE = Request.Method.DELETE;
 
     private Map<String, String> headers;
 
