@@ -3,6 +3,7 @@ package chanyb.android.java;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -32,20 +33,23 @@ public class RequestManager {
     public static int DELETE = Request.Method.DELETE;
 
     private Map<String, String> headers;
+    private Listener listener;
 
     public void setHeaders(Map<String, String> _headers) {
         headers = _headers;
     }
 
+
     /**
-     * @param method Request.Method - Get, Post, Put, Delete.
+     * @param method GET | POST | PUT | DELETE
      * @param url Destination URL
      * @param object params
-     * @param listener Response.Listener<T>
-     * @param errorListener Response.ErrorListener
-     * */
-    public void addRequest(int method, String url, JSONObject object, Response.Listener<JSONObject> listener, Response.ErrorListener errorListener) {
-        JsonObjectRequest newRequest = new JsonObjectRequest(method, url, object, listener, errorListener) {
+     * @param listener Success and Error Listener interface implementation
+     */
+    public void addRequest(int method, String url, JSONObject object, Listener listener) {
+        this.listener = listener;
+
+        JsonObjectRequest newRequest = new JsonObjectRequest(method, url, object, successListener, errorListener) {
             @Override
             public Map<String, String> getHeaders() {
                 return headers;
@@ -53,5 +57,31 @@ public class RequestManager {
         };
         requestQueue.add(newRequest);
     }
+
+    public interface Listener {
+        void onSuccess();
+        void onError();
+    }
+
+    Response.Listener successListener = new Response.Listener() {
+        @Override
+        public void onResponse(Object response) {
+            if(listener != null) {
+                listener.onSuccess();
+                listener = null;
+            }
+        }
+    };
+
+    Response.ErrorListener errorListener = new Response.ErrorListener() {
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            if(listener != null) {
+                listener.onError();
+                listener = null;
+            }
+        }
+    };
+
 
 }
