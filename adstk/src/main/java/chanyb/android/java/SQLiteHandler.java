@@ -1,7 +1,6 @@
 package chanyb.android.java;
 
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -11,7 +10,6 @@ import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -39,7 +37,7 @@ public class SQLiteHandler {
             public void onCreate(SQLiteDatabase sqLiteDatabase) {
                 for (String sql : sqls) {
                     // 테이블 생성
-                    try{
+                    try {
                         sqLiteDatabase.execSQL(sql);
                     } catch (Exception e) {
                         Log.i(TAG, "execSQL error", e);
@@ -65,9 +63,9 @@ public class SQLiteHandler {
         };
     }
 
-    private ArrayList<String> getCreateTableSql(ArrayList<String> tables, ArrayList<Map<String,String>> columns) {
+    private ArrayList<String> getCreateTableSql(ArrayList<String> tables, ArrayList<Map<String, String>> columns) {
         ArrayList<String> sqls = new ArrayList<>();
-        for (int idx=0; idx<tables.size(); idx++) {
+        for (int idx = 0; idx < tables.size(); idx++) {
             // each table
             StringBuilder sqlBuilder = new StringBuilder();
             sqlBuilder.append("CREATE TABLE IF NOT EXISTS ");
@@ -77,11 +75,11 @@ public class SQLiteHandler {
             Map<String, String> column = columns.get(idx);
             for (String key : column.keySet()) {
                 sqlBuilder.append(key); // key
-                if(key != null && !key.equals("")) sqlBuilder.append(" ");
+                if (key != null && !key.equals("")) sqlBuilder.append(" ");
                 sqlBuilder.append(column.get(key)); // key info (ex. INTEGER PRIMARY KEY AUTOINCREMENT)
                 sqlBuilder.append(",");
             }
-            sqlBuilder.setLength(sqlBuilder.length()-1); // remove last comma
+            sqlBuilder.setLength(sqlBuilder.length() - 1); // remove last comma
             sqlBuilder.append(");");
 
             sqls.add(sqlBuilder.toString());
@@ -97,7 +95,7 @@ public class SQLiteHandler {
 
         // optional paramters
         private final ArrayList<String> tables;
-        private final ArrayList<Map<String,String>> columns;
+        private final ArrayList<Map<String, String>> columns;
 
         public Builder(String fileName, int version) {
             this.fileName = fileName;
@@ -106,7 +104,7 @@ public class SQLiteHandler {
             columns = new ArrayList<>();
         }
 
-        public Builder addTable(String table, Map<String,String> column) {
+        public Builder addTable(String table, Map<String, String> column) {
             this.tables.add(table);
             this.columns.add(column);
             return this;
@@ -162,8 +160,7 @@ public class SQLiteHandler {
     }
 
     // 직접 작성하여 delete 하는 함수
-    public long delete(String tableName, String whereClause, String[] whereArgs)
-    {
+    public long delete(String tableName, String whereClause, String[] whereArgs) {
         Log.d(TAG, "delete");
         mDB = mHelper.getWritableDatabase();
 
@@ -187,14 +184,14 @@ public class SQLiteHandler {
         StringBuilder whereClause = new StringBuilder();
         ArrayList<String> primaryKeys = getPrimaryKeysFromColumn(column);
         String[] whereArgs = new String[primaryKeys.size()];
-        for (int idx=0; idx<primaryKeys.size(); idx++) {
+        for (int idx = 0; idx < primaryKeys.size(); idx++) {
             // 각각의 primary key에 대해
             whereClause.append(primaryKeys.get(idx));
             whereClause.append("=?");
             whereClause.append(" and ");
             whereArgs[idx] = (String) contentValue.get(primaryKeys.get(idx));
         }
-        whereClause.setLength(whereClause.length()-5); // remove last ' and '
+        whereClause.setLength(whereClause.length() - 5); // remove last ' and '
         Map<String, String[]> res = new LinkedHashMap<>();
         res.put(whereClause.toString(), whereArgs);
         return res;
@@ -202,19 +199,19 @@ public class SQLiteHandler {
 
     public ArrayList<String> getPrimaryKeysFromColumn(Map<String, String> column) {
         ArrayList<String> primaryKeyList = new ArrayList<>();
-        if(column.size() == 0) throw new RuntimeException("the parameter column size is 0");
+        if (column.size() == 0) throw new RuntimeException("the parameter column size is 0");
         for (String key : column.keySet()) {
             String columnInfo = column.get(key);
             if (columnInfo.toLowerCase().contains("primary key")) {
                 // primary key(colName, colName, ...) 인 경우
-                if(columnInfo.toLowerCase().contains("primary key(")) {
+                if (columnInfo.toLowerCase().contains("primary key(")) {
                     String tmp = columnInfo.toLowerCase();
                     tmp = tmp.replace("primary key(", "");
                     tmp = tmp.replace(")", "");
                     tmp = tmp.replace(", ", ",");
                     tmp = tmp.replace(" ,", ",");
                     String[] tmpArr = tmp.split(",");
-                    for(String keyName : tmpArr) {
+                    for (String keyName : tmpArr) {
                         primaryKeyList.add(keyName.trim());
                     }
                     break;
@@ -224,14 +221,15 @@ public class SQLiteHandler {
                 }
             }
         }
-        if(primaryKeyList.size() == 0) throw new RuntimeException("it must have at least one primary key but expected " + primaryKeyList.size() + ".");
+        if (primaryKeyList.size() == 0)
+            throw new RuntimeException("it must have at least one primary key but expected " + primaryKeyList.size() + ".");
 
         return primaryKeyList;
     }
 
-    public Map<String,String> getColumns(String tableName) {
-        for (int idx=0; idx<tables.size(); idx++) {
-            if(!tables.get(idx).equals(tableName)) continue;
+    public Map<String, String> getColumns(String tableName) {
+        for (int idx = 0; idx < tables.size(); idx++) {
+            if (!tables.get(idx).equals(tableName)) continue;
 
             // 해당하는 columns 가져와서
             return columns.get(idx);
@@ -243,11 +241,11 @@ public class SQLiteHandler {
     public ContentValues getContentValuesFromSerializable(String tableName, Serializable serializable) {
         ContentValues contentValue = new ContentValues();
         for (Method method : serializable.getClass().getMethods()) {
-            if(!method.getDeclaringClass().getName().endsWith("SerializableClass")) continue;
+            if (!method.getDeclaringClass().getName().endsWith("SerializableClass")) continue;
 
             // Get name of key
             String field = null;
-            try{
+            try {
                 field = method.getName().replace("get", "").toLowerCase();
             } catch (NullPointerException e) {
                 Log.i(TAG, "insert error", e);
@@ -261,11 +259,12 @@ public class SQLiteHandler {
                 Log.i(TAG, "error", e);
             }
 
-            if(value == null) throw new NullPointerException("insert error - getter returned null");
+            if (value == null)
+                throw new NullPointerException("insert error - getter returned null");
 
             /* field에 해당하는 column의 type찾기 s */
             Map<String, String> column = null;
-            for (int idx=0; idx< tables.size(); idx++) {
+            for (int idx = 0; idx < tables.size(); idx++) {
                 // 해당하는 테이블 idx 찾기
                 if (!tables.get(idx).equals(tableName)) continue;
 
@@ -285,7 +284,7 @@ public class SQLiteHandler {
                     // first index is type of column
                     String sType = sColumnInfo.split(" ").length > 1 ? sColumnInfo.split(" ")[0].toLowerCase() : sColumnInfo.toLowerCase();
 
-                    if(sType.contains("text") || sType.contains("varchar")) {
+                    if (sType.contains("text") || sType.contains("varchar")) {
                         contentValue.put(field, (String) value);
                     } else if (sType.contains("integer")) {
                         contentValue.put(field, (int) value);

@@ -1,6 +1,5 @@
 package chanyb.android.java;
 
-import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
@@ -9,7 +8,8 @@ public class ToastManager {
     private static ToastManager instance = new ToastManager();
     private Toast toast;
 
-    private ToastManager () {}
+    private ToastManager() {
+    }
 
     public static ToastManager getInstance() {
         return instance;
@@ -17,6 +17,7 @@ public class ToastManager {
 
     /**
      * Can show toast easy.
+     *
      * @param msg want to show message
      */
     public void show(String msg) {
@@ -24,7 +25,8 @@ public class ToastManager {
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if(GlobalApplcation.currentActivity != null) toast = Toast.makeText(GlobalApplcation.currentActivity, msg, Toast.LENGTH_SHORT);
+                if (GlobalApplcation.currentActivity != null)
+                    toast = Toast.makeText(GlobalApplcation.currentActivity, msg, Toast.LENGTH_SHORT);
                 else toast = Toast.makeText(GlobalApplcation.getContext(), msg, Toast.LENGTH_SHORT);
                 toast.show();
             }

@@ -16,17 +16,21 @@ import androidx.annotation.Nullable;
 public class GlobalApplcation extends Application {
     private static volatile GlobalApplcation instance;
     private static String TAG = "activity";
+
     public static GlobalApplcation getContext() {
         return instance;
     }
+
     private enum State {
         None, Foreground, Background
     }
+
     private State state;
     private int running;
 
     public interface Listener {
         void onBecameForeground();
+
         void onBecameBackground();
     }
 
@@ -74,8 +78,8 @@ public class GlobalApplcation extends Application {
                 state = State.Background;
                 if (stateListener != null) stateListener.onBecameBackground();
             }
-            if(GlobalApplcation.currentActivity != null) {
-                if(activity.getClass() == GlobalApplcation.currentActivity.getClass()) {
+            if (GlobalApplcation.currentActivity != null) {
+                if (activity.getClass() == GlobalApplcation.currentActivity.getClass()) {
                     GlobalApplcation.currentActivity = null;
                 }
             }
@@ -145,7 +149,7 @@ public class GlobalApplcation extends Application {
             NotificationManager notificationManager = GlobalApplcation.getContext().getSystemService(NotificationManager.class);
             NotificationChannel channel = notificationManager.getNotificationChannel(channelId);
 
-            if(channel != null) {
+            if (channel != null) {
                 return true;
             }
             return false;

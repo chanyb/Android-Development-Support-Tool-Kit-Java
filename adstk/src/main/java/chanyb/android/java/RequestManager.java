@@ -16,14 +16,16 @@ import java.util.Map;
 public class RequestManager {
     private static final String TAG = "this";
     private static RequestManager instance = new RequestManager();
+
     private RequestManager() {
         headers = new HashMap<>();
         requestQueue = Volley.newRequestQueue(GlobalApplcation.getContext());
     }
 
     private static RequestQueue requestQueue;
+
     public static RequestManager getInstance() {
-        if(instance == null) instance = new RequestManager();
+        if (instance == null) instance = new RequestManager();
         return instance;
     }
 
@@ -41,9 +43,9 @@ public class RequestManager {
 
 
     /**
-     * @param method GET | POST | PUT | DELETE
-     * @param url Destination URL
-     * @param object params
+     * @param method   GET | POST | PUT | DELETE
+     * @param url      Destination URL
+     * @param object   params
      * @param listener Success and Error Listener interface implementation
      */
     public void addRequest(int method, String url, JSONObject object, Listener listener) {
@@ -60,13 +62,14 @@ public class RequestManager {
 
     public interface Listener {
         void onSuccess(Object response);
+
         void onError(String errorString);
     }
 
     Response.Listener successListener = new Response.Listener() {
         @Override
         public void onResponse(Object response) {
-            if(listener != null) {
+            if (listener != null) {
                 listener.onSuccess(response);
                 listener = null;
             }
@@ -76,7 +79,7 @@ public class RequestManager {
     Response.ErrorListener errorListener = new Response.ErrorListener() {
         @Override
         public void onErrorResponse(VolleyError error) {
-            if(listener != null) {
+            if (listener != null) {
                 listener.onError(error.toString());
                 listener = null;
             }
