@@ -59,15 +59,15 @@ public class RequestManager {
     }
 
     public interface Listener {
-        void onSuccess();
-        void onError();
+        void onSuccess(Object response);
+        void onError(String errorString);
     }
 
     Response.Listener successListener = new Response.Listener() {
         @Override
         public void onResponse(Object response) {
             if(listener != null) {
-                listener.onSuccess();
+                listener.onSuccess(response);
                 listener = null;
             }
         }
@@ -77,7 +77,7 @@ public class RequestManager {
         @Override
         public void onErrorResponse(VolleyError error) {
             if(listener != null) {
-                listener.onError();
+                listener.onError(error.toString());
                 listener = null;
             }
         }
