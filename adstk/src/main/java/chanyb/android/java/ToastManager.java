@@ -15,27 +15,21 @@ public class ToastManager {
         return instance;
     }
 
-    public void showToast(Context context, String msg) {
+    /**
+     * Can show toast easy.
+     * @param msg want to show message
+     */
+    public void show(String msg) {
         Handler handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                toast = Toast.makeText(context, msg, Toast.LENGTH_SHORT);
+                if(GlobalApplcation.currentActivity != null) toast = Toast.makeText(GlobalApplcation.currentActivity, msg, Toast.LENGTH_SHORT);
+                else toast = Toast.makeText(GlobalApplcation.getContext(), msg, Toast.LENGTH_SHORT);
                 toast.show();
             }
         }, 0);
 
     }
 
-    public void showToast(String msg) {
-        Handler handler = new Handler(Looper.getMainLooper());
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                toast = Toast.makeText(GlobalApplcation.getContext(), msg, Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        }, 0);
-
-    }
 }
