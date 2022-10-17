@@ -318,6 +318,7 @@ public class SQLiteHandler {
         ContentValues contentValue = new ContentValues();
         for (Method method : serializable.getClass().getMethods()) {
             if (!method.getDeclaringClass().getName().endsWith("SerializableClass")) continue;
+            if (method.getName().startsWith("set")) continue;
 
             // Get name of key
             String field = null;
