@@ -159,7 +159,7 @@ public class SQLiteHandler {
                 // 각각의 key마다
                 String[] info = columnInfo.get(key).toLowerCase().split(" ");
                 String setterName = "set" + key.substring(0,1).toUpperCase() + key.substring(1);
-                if (info[0].equals("text")) {
+                if (info[0].equals("text") || info[0].contains("varchar")) {
                     findFunctionAndInvoke(tmp, setterName, cursor.getString(cursor.getColumnIndexOrThrow(key)));
                 } else if (info[0].equals("integer")) {
                     findFunctionAndInvoke(tmp, setterName, cursor.getInt(cursor.getColumnIndexOrThrow(key)));
