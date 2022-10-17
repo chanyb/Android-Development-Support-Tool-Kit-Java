@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -115,7 +116,7 @@ public class SQLiteHandler {
         }
     }
 
-    public Cursor select(String tableName, String[] columns, String columnForWhereClause, String[] valueForWhereClause, String groupBy, String having, String orderBy, String limit) {
+    public Cursor selectCursor(String tableName, String[] columns, String columnForWhereClause, String[] valueForWhereClause, String groupBy, String having, String orderBy, String limit) {
         mDB = mHelper.getReadableDatabase();
         Cursor c = mDB.query(
                 tableName,
@@ -127,6 +128,81 @@ public class SQLiteHandler {
                 orderBy,
                 limit);
         return c;
+    }
+
+
+    public ArrayList<Object> select(Class<?> aClass, String tableName, String[] columns, String columnForWhereClause, String[] valueForWhereClause, String groupBy, String having, String orderBy, String limit) throws InvocationTargetException, IllegalAccessException {
+        mDB = mHelper.getReadableDatabase();
+        Cursor cursor = mDB.query(
+                tableName,
+                columns,
+                columnForWhereClause /* column for where clause*/,
+                valueForWhereClause/* value for where clause*/,
+                groupBy,
+                having,
+                orderBy,
+                limit);
+
+        Map<String, String> columnInfo = getColumns(tableName);
+
+        // return할 ArrayLIst 생성
+        ArrayList<Object> result = new ArrayList<>();
+
+
+        // moveToNext()가 false 일 때까지,
+        // cursur에서 각각의 key에 알맞는 getter를 이용하여 데이터를 꺼내고
+        // setter를 찾아서 set하고
+        // result에 추가
+        while(cursor.moveToNext()) {
+            Object tmp = getNewObject(aClass);
+            for (String key : columnInfo.keySet()) {
+                // 각각의 key마다
+                String[] info = columnInfo.get(key).toLowerCase().split(" ");
+                String setterName = "set" + key.substring(0,1).toUpperCase() + key.substring(1);
+                if (info[0].equals("text")) {
+                    findFunctionAndInvoke(tmp, setterName, cursor.getString(cursor.getColumnIndexOrThrow(key)));
+                } else if (info[0].equals("integer")) {
+                    findFunctionAndInvoke(tmp, setterName, cursor.getInt(cursor.getColumnIndexOrThrow(key)));
+                } else if (info[0].equals("boolean")) {
+                    findFunctionAndInvoke(tmp, setterName, cursor.getInt(cursor.getColumnIndexOrThrow(key)));
+                } else {
+                    throw new RuntimeException("It's not expected columnInfo: " + info[0]);
+                }
+            }
+
+            result.add(tmp);
+        }
+
+        return result;
+    }
+
+    public Object findFunctionAndInvoke(Object obj, String functionName, Object arg) throws InvocationTargetException, IllegalAccessException {
+        for (Method method : obj.getClass().getMethods()) {
+            if (method.getName().equals(functionName)) {
+                method.invoke(obj, arg);
+                break;
+            }
+        }
+
+        return obj;
+    }
+
+
+    /**
+     *  Get new Object from class constructor - no parameter, so it is need to have default constructor
+     * @param aClass Class Object
+     * @return Object - Object of aClass type
+     */
+    public Object getNewObject(Class<?> aClass) {
+        Constructor<?> constructor = null;
+        try {
+            constructor = aClass.getDeclaredConstructor();
+            return constructor.newInstance();
+        } catch (IllegalAccessException | InstantiationException | InvocationTargetException | NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     // 객체로 insert하는 함수
