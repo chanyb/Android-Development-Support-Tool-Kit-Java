@@ -156,6 +156,8 @@ public class SQLiteHandler {
         while(cursor.moveToNext()) {
             Object tmp = getNewObject(aClass);
             for (String key : columnInfo.keySet()) {
+                if(key.equals("")) continue;
+                
                 // 각각의 key마다
                 String[] info = columnInfo.get(key).toLowerCase().split(" ");
                 String setterName = "set" + key.substring(0,1).toUpperCase() + key.substring(1);
