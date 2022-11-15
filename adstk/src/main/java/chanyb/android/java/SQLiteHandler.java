@@ -319,7 +319,7 @@ public class SQLiteHandler {
     public ContentValues getContentValuesFromSerializable(String tableName, Serializable serializable) {
         ContentValues contentValue = new ContentValues();
         for (Method method : serializable.getClass().getMethods()) {
-            if (!method.getDeclaringClass().getName().endsWith("SerializableClass")) continue;
+            if (!method.getDeclaringClass().getName().equals(serializable.getClass().getName())) continue;
             if (method.getName().startsWith("set")) continue;
 
             // Get name of key
