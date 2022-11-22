@@ -2,20 +2,40 @@ package chanyb.android.java;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.AlarmManager;
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.ImageDecoder;
+import android.graphics.Point;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Display;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+
 public class GlobalApplcation extends Application {
     private static volatile GlobalApplcation instance;
     private static String TAG = "activity";
+    Display display;
+    Point display_size;
+    InputMethodManager imm;
 
     public static GlobalApplcation getContext() {
         return instance;
@@ -37,18 +57,36 @@ public class GlobalApplcation extends Application {
     private Listener stateListener;
     public static Activity currentActivity;
 
+    private void getScreenSize(Activity _activity) {
+        //1
+        //display = _activity.getWindowManager().getDefaultDisplay();  // in
+
+        //2
+        WindowManager wm = (WindowManager) _activity.getSystemService(_activity.WINDOW_SERVICE);
+        display = wm.getDefaultDisplay();
+        display_size = new Point();
+        display.getRealSize(display_size); // or getSize(size)
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         registerActivityLifecycleCallbacks(activityLifecycleCallbacks);
         instance = this;
         state = State.None;
+        imm = (InputMethodManager) getSystemService(GlobalApplcation.INPUT_METHOD_SERVICE);
     }
 
     ActivityLifecycleCallbacks activityLifecycleCallbacks = new ActivityLifecycleCallbacks() {
         @Override
-        public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+        public void onActivityPreCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+            ActivityLifecycleCallbacks.super.onActivityPreCreated(activity, savedInstanceState);
+            GlobalApplcation.currentActivity = activity;
+        }
 
+        @Override
+        public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle bundle) {
+            getScreenSize(activity);
         }
 
         @Override
@@ -156,5 +194,73 @@ public class GlobalApplcation extends Application {
         }
 
         return true;
+    }
+
+    public void showSoftInput(EditText editText) {
+        imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT);
+    }
+
+    public void hideSoftInput(EditText editText) {
+        imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
+    }
+
+    public int getHeight() {
+        return display_size.y;
+    }
+
+    public void cancelAlarm(Class broadCastReceiverClass, int id) {
+        AlarmManager alarmManager = (AlarmManager) GlobalApplcation.getContext().getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(GlobalApplcation.getContext(), broadCastReceiverClass);
+        PendingIntent alarmPendingIntent = null;
+        intent.setAction(Utils.ACTION_REPORT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            alarmPendingIntent = PendingIntent.getBroadcast(GlobalApplcation.getContext(), id, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        } else {
+            alarmPendingIntent = PendingIntent.getBroadcast(GlobalApplcation.getContext(), id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        }
+        alarmManager.cancel(alarmPendingIntent);
+    }
+
+    public String saveBitmapToGallery(Bitmap bitmap, String fileName, String fileDesc) {
+        return MediaStore.Images.Media.insertImage(GlobalApplcation.getContext().getContentResolver(), bitmap, fileName, fileDesc);
+    }
+
+    public Bitmap getBitmapFromUri(Uri uri) {
+        Bitmap bitmap = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(getContext().getContentResolver(), uri));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), uri);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return bitmap;
+    }
+
+    public void deletePhotoInGallery(Uri uri) {
+        String[] projection = new String[]{
+                MediaStore.Images.ImageColumns._ID,
+                MediaStore.Images.ImageColumns.DATA,
+                MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME, //the album it in
+                MediaStore.Images.ImageColumns.DATE_TAKEN,
+                MediaStore.Images.ImageColumns.MIME_TYPE,
+                MediaStore.Images.ImageColumns.TITLE
+        };
+
+        Cursor cursor = getContext().getContentResolver().query(uri, projection, null, null, null);
+        cursor.moveToFirst();
+
+        int dataIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.DATA);
+        String data = cursor.getString(dataIdx);
+        File photo = new File(data);
+        if (photo.exists()) {
+            photo.delete();
+        }
     }
 }
