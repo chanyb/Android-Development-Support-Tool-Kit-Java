@@ -212,7 +212,6 @@ public class GlobalApplcation extends Application {
         AlarmManager alarmManager = (AlarmManager) GlobalApplcation.getContext().getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(GlobalApplcation.getContext(), broadCastReceiverClass);
         PendingIntent alarmPendingIntent = null;
-        intent.setAction(Utils.ACTION_REPORT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             alarmPendingIntent = PendingIntent.getBroadcast(GlobalApplcation.getContext(), id, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
         } else {
