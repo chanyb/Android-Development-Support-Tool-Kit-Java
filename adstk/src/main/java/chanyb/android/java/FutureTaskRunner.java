@@ -1,7 +1,5 @@
 package chanyb.android.java;
 
-import android.util.Log;
-
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -10,6 +8,7 @@ import java.util.concurrent.FutureTask;
 public class FutureTaskRunner<T> {
     private FutureTask<T> futureTask;
     ArrayList<Callable<T>> taskList;
+    private Thread thread;
 
     public FutureTaskRunner() {
         taskList = new ArrayList<>();
@@ -30,18 +29,22 @@ public class FutureTaskRunner<T> {
     }
 
     public void start() {
-        Thread thread = new Thread(() -> {
+        thread = new Thread(() -> {
             for (Callable<T> callable : taskList) {
                 futureTask = new FutureTask<>(callable);
                 futureTask.run();
                 try {
-                    if (futureTask.get() == null) {
-                        throw new RuntimeException("futureTaskManager - get Fail..");
+                    Object res = futureTask.get();
+                    if (res == null) {
+                        return;
+                    } else if (!(boolean) res) {
+                        return;
                     }
+
                 } catch (InterruptedException | ExecutionException e) {
-                    Log.i("this", "error", e);
                     Thread.currentThread().interrupt();
                     return;
+                } catch (ClassCastException ignored) {
                 }
             }
 
@@ -55,5 +58,9 @@ public class FutureTaskRunner<T> {
         });
 
         thread.start();
+    }
+
+    public void stop() {
+        thread.interrupt();
     }
 }
