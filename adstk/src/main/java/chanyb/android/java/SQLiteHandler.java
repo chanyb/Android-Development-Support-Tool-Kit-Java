@@ -41,7 +41,7 @@ public class SQLiteHandler {
                     try {
                         sqLiteDatabase.execSQL(sql);
                     } catch (Exception e) {
-                        Log.i(TAG, "execSQL error", e);
+                        Log.e(TAG, "execSQL error", e);
                     }
 
                     // 업그레이드인지 확인하고(파일확인), 데이터 있으면 넣기
@@ -50,7 +50,7 @@ public class SQLiteHandler {
             }
 
             @Override
-            public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
+            public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
                 for (String table : tables) {
                     // 데이터 저장 필요 (파일저장?..)
 
@@ -84,7 +84,6 @@ public class SQLiteHandler {
             sqlBuilder.append(");");
 
             sqls.add(sqlBuilder.toString());
-            Log.i("this", "create table sql: " + sqlBuilder.toString());
         }
         return sqls;
     }
@@ -153,14 +152,14 @@ public class SQLiteHandler {
         // cursur에서 각각의 key에 알맞는 getter를 이용하여 데이터를 꺼내고
         // setter를 찾아서 set하고
         // result에 추가
-        while(cursor.moveToNext()) {
+        while (cursor.moveToNext()) {
             Object tmp = getNewObject(aClass);
             for (String key : columnInfo.keySet()) {
-                if(key.equals("")) continue;
-                
+                if (key.equals("")) continue;
+
                 // 각각의 key마다
                 String[] info = columnInfo.get(key).toLowerCase().split(" ");
-                String setterName = "set" + key.substring(0,1).toUpperCase() + key.substring(1);
+                String setterName = "set" + key.substring(0, 1).toUpperCase() + key.substring(1);
                 if (info[0].equals("text") || info[0].contains("varchar")) {
                     findFunctionAndInvoke(tmp, setterName, cursor.getString(cursor.getColumnIndexOrThrow(key)));
                 } else if (info[0].equals("integer")) {
@@ -191,7 +190,8 @@ public class SQLiteHandler {
 
 
     /**
-     *  Get new Object from class constructor - no parameter, so it is need to have default constructor
+     * Get new Object from class constructor - no parameter, so it is need to have default constructor
+     *
      * @param aClass Class Object
      * @return Object - Object of aClass type
      */
@@ -319,7 +319,8 @@ public class SQLiteHandler {
     public ContentValues getContentValuesFromSerializable(String tableName, Serializable serializable) {
         ContentValues contentValue = new ContentValues();
         for (Method method : serializable.getClass().getMethods()) {
-            if (!method.getDeclaringClass().getName().equals(serializable.getClass().getName())) continue;
+            if (!method.getDeclaringClass().getName().equals(serializable.getClass().getName()))
+                continue;
             if (method.getName().startsWith("set")) continue;
 
             // Get name of key
@@ -384,5 +385,11 @@ public class SQLiteHandler {
 
     public void close() {
         mHelper.close();
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        close();
     }
 }
