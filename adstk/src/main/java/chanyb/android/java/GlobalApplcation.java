@@ -13,7 +13,11 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
+import android.graphics.Matrix;
 import android.graphics.Point;
+import android.media.ExifInterface;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -31,11 +35,13 @@ import java.io.File;
 import java.io.IOException;
 
 public class GlobalApplcation extends Application {
+    public final static int PREFERENCE_INT_DEFAULT = -989899;
     private static volatile GlobalApplcation instance;
     private static String TAG = "activity";
     Display display;
     Point display_size;
     InputMethodManager imm;
+
 
     public static GlobalApplcation getContext() {
         return instance;
@@ -208,9 +214,11 @@ public class GlobalApplcation extends Application {
         return display_size.y;
     }
 
-    public void cancelAlarm(Class broadCastReceiverClass, int id) {
+    public void cancelAlarm(Class broadCastReceiverClass, int id, String sAction) {
         AlarmManager alarmManager = (AlarmManager) GlobalApplcation.getContext().getSystemService(Context.ALARM_SERVICE);
         Intent intent = new Intent(GlobalApplcation.getContext(), broadCastReceiverClass);
+        if(sAction != null) intent.setAction(sAction);
+
         PendingIntent alarmPendingIntent = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             alarmPendingIntent = PendingIntent.getBroadcast(GlobalApplcation.getContext(), id, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
@@ -226,6 +234,33 @@ public class GlobalApplcation extends Application {
 
     public Bitmap getBitmapFromUri(Uri uri) {
         Bitmap bitmap = null;
+        ExifInterface exif = null;
+        DeviceRotationManager.ROTATE_STATE rotateState = null;
+        int orientation = PREFERENCE_INT_DEFAULT;
+        // exif 읽기
+        try {
+            exif = new ExifInterface(uri.getPath());
+            orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            switch (orientation) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    // exif 확인 결과 기본 사진은 90도 회전되어있지만, 내가 읽어온 비트맵은 회전되지 않은 상태이므로 90도 회전해주기 위해 아래와같이 설정.
+                    rotateState = DeviceRotationManager.ROTATE_STATE.LANDSCAPE_REVERSE;
+                    break;
+                case 180:
+                    rotateState = DeviceRotationManager.ROTATE_STATE.PORTRAIT;
+                    break;
+                case 270:
+                    rotateState = DeviceRotationManager.ROTATE_STATE.PORTRAIT_REVERSE;
+                    break;
+                case 0:
+                    rotateState = DeviceRotationManager.ROTATE_STATE.LANDSCAPE;
+                    break;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
                 bitmap = ImageDecoder.decodeBitmap(ImageDecoder.createSource(getContext().getContentResolver(), uri));
@@ -235,11 +270,23 @@ public class GlobalApplcation extends Application {
         } else {
             try {
                 bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), uri);
+                bitmap = rotateBitmap(rotateState, bitmap);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         return bitmap;
+    }
+
+    private Bitmap rotateBitmap(DeviceRotationManager.ROTATE_STATE captureRotate, Bitmap bitmap) {
+        Matrix rotateMatrix = new Matrix();
+
+        if (captureRotate == DeviceRotationManager.ROTATE_STATE.LANDSCAPE) rotateMatrix.postRotate(270);
+        else if (captureRotate == DeviceRotationManager.ROTATE_STATE.LANDSCAPE_REVERSE) rotateMatrix.postRotate(90);
+        else if (captureRotate == DeviceRotationManager.ROTATE_STATE.PORTRAIT) rotateMatrix.postRotate(0);
+        else if (captureRotate == DeviceRotationManager.ROTATE_STATE.PORTRAIT_REVERSE) rotateMatrix.postRotate(180);
+
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), rotateMatrix, false);
     }
 
     public void deletePhotoInGallery(Uri uri) {
@@ -253,6 +300,7 @@ public class GlobalApplcation extends Application {
         };
 
         Cursor cursor = getContext().getContentResolver().query(uri, projection, null, null, null);
+        if(cursor == null || cursor.getCount() == 0) return ;
         cursor.moveToFirst();
 
         int dataIdx = cursor.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.DATA);
@@ -261,5 +309,11 @@ public class GlobalApplcation extends Application {
         if (photo.exists()) {
             photo.delete();
         }
+    }
+
+    public boolean isOnline(Context context) {
+        ConnectivityManager connMgr = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        return (networkInfo != null && networkInfo.isConnected());
     }
 }
